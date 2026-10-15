@@ -11,6 +11,15 @@ namespace Szeminarium1
 
         private static uint program;
 
+        private static void CheckGLError(string stepName)
+        {
+            GLEnum error = Gl.GetError();
+            if (error != GLEnum.NoError)
+            {
+                Console.WriteLine($"[OpenGL Hiba] Itt történt hiba: {stepName} -> Hibakód: {error}");
+            }
+        }
+
         //layout (location = 2) in vec4 vCol -ra csereltem le a 18-as sort 
         // es a forma amit eddig szinesen kirajzolt fekete lett
         private static readonly string VertexShaderSource = @"
@@ -70,6 +79,7 @@ namespace Szeminarium1
 
             uint vshader = Gl.CreateShader(ShaderType.VertexShader);
             uint fshader = Gl.CreateShader(ShaderType.FragmentShader);
+            CheckGLError("Vertex es Fragment shader hibaellenorzes");
 
             Gl.ShaderSource(vshader, VertexShaderSource);
             Gl.CompileShader(vshader);
@@ -88,6 +98,7 @@ namespace Szeminarium1
             Gl.DetachShader(program, fshader);
             Gl.DeleteShader(vshader);
             Gl.DeleteShader(fshader);
+            CheckGLError("Program hibaellenorzese");
 
             Gl.GetProgram(program, GLEnum.LinkStatus, out var status);
             if (status == 0)
@@ -154,12 +165,14 @@ namespace Szeminarium1
             Gl.BufferData(GLEnum.ArrayBuffer, (ReadOnlySpan<float>)vertexArray.AsSpan(), GLEnum.StaticDraw);
             Gl.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 0, null);
             Gl.EnableVertexAttribArray(0);
+            CheckGLError("Csucsok hibaellenorzes");
 
             uint colors = Gl.GenBuffer();
             Gl.BindBuffer(GLEnum.ArrayBuffer, colors);
             Gl.BufferData(GLEnum.ArrayBuffer, (ReadOnlySpan<float>)colorArray.AsSpan(), GLEnum.StaticDraw);
             Gl.VertexAttribPointer(1, 4, VertexAttribPointerType.Float, false, 0, null);
             Gl.EnableVertexAttribArray(1);
+            CheckGLError("Szinex beallitasanal hibaellenorzes");
 
             uint indices = Gl.GenBuffer();
             //felcsereltem a ket parancs sorrendjet es igy mar nem jelenik meg az alakzat
@@ -182,6 +195,7 @@ namespace Szeminarium1
             Gl.DeleteBuffer(colors);
             Gl.DeleteBuffer(indices);
             Gl.DeleteVertexArray(vao);
+            CheckGLError("Torlesnel hibaellenorzes");
         }
     }
 }
