@@ -32,7 +32,7 @@ namespace Szeminarium1
         void main()
         {
 			outCol = vCol;
-            gl_Position = vec4(vPos.x, vPos.y, vPos.z, 1.0);
+            gl_Position = vec4(vPos.x * 0.7 - 0.1, vPos.y * 0.7, vPos.z, 1.0);
         }
         ";
 
@@ -55,7 +55,7 @@ namespace Szeminarium1
             windowOptions.Title = "1. szeminárium - háromszög";
             // kicsereltem: windowOptions.Size = new Silk.NET.Maths.Vector2D<int>(200, 200); a 48-as sort
             // kisebb lett az ablak merete
-            windowOptions.Size = new Silk.NET.Maths.Vector2D<int>(500, 500);
+            windowOptions.Size = new Silk.NET.Maths.Vector2D<int>(800, 800);
 
             graphicWindow = Window.Create(windowOptions);
 
@@ -133,10 +133,20 @@ namespace Szeminarium1
             };*/
 
             float[] vertexArray = new float[] {
-                -0.5f, -0.5f, 0.0f,
-                +0.5f, -0.5f, 0.0f,
-                 0.0f, +0.5f, 0.0f,
-                 1f, 1f, 0f
+                0.0f, 0.0f, 0.0f,
+                1.0f, 0.5f, 0.0f,
+                0.0f, 1.0f, 0.0f,
+               -1.0f, 0.5f, 0.0f,
+
+                0.0f, 0.0f, 0.0f,
+                1.0f, 0.5f, 0.0f,
+                1.0f, -0.6f,0.0f,
+                0.0f, -1.2f, 0.0f,
+
+                0.0f, 0.0f, 0.0f,
+                0.0f, -1.2f, 0.0f,
+               -1.0f, -0.6f, 0.0f,
+               -1.0f, 0.5f, 0.0f,
             };
 
             //kicsereltem az 1-eseket 2-esekre az arrayban es vilagos szinu lett a forma
@@ -149,15 +159,34 @@ namespace Szeminarium1
                 };
             */
             float[] colorArray = new float[] {
+                // Felső lap (Világos szürke) - 4 csúcs
                 1.0f, 0.0f, 0.0f, 1.0f,
+                1.0f, 0.0f, 0.0f, 1.0f,
+                1.0f, 0.0f, 0.0f, 1.0f,
+                1.0f, 0.0f, 0.0f, 1.0f,
+
+                // Bal lap (Közép szürke) - 4 csúcs
                 0.0f, 1.0f, 0.0f, 1.0f,
+                0.0f, 1.0f, 0.0f, 1.0f,
+                0.0f, 1.0f, 0.0f, 1.0f,
+                0.0f, 1.0f, 0.0f, 1.0f,
+
+                // Jobb lap (Sötét szürke) - 4 csúcs
                 0.0f, 0.0f, 1.0f, 1.0f,
-                1.0f, 0.0f, 0.0f, 1.0f,
+                0.0f, 0.0f, 1.0f, 1.0f,
+                0.0f, 0.0f, 1.0f, 1.0f,
+                0.0f, 0.0f, 1.0f, 1.0f
             };
 
             uint[] indexArray = new uint[] {
                 0, 1, 2,
-                2, 1, 3
+                0, 2, 3,
+
+                4, 5, 6,
+                4, 6 ,7,
+
+                8, 9, 10,
+                8, 10 ,11
             };
 
             uint vertices = Gl.GenBuffer();
