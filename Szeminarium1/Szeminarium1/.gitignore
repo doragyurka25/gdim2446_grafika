@@ -1,0 +1,19 @@
+./obj
+./bin
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.dtbcache*
+*.futdcache*
+*.metadata*
+*.projects*
+
+# Build kimeneti mappák (.NET / C#)
+bin/
+obj/
+
+# Egyéb build artifactok
+*.dll
+*.pdb
