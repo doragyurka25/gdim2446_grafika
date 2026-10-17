@@ -147,6 +147,43 @@ namespace Szeminarium1
                 0.0f, -1.2f, 0.0f,
                -1.0f, -0.6f, 0.0f,
                -1.0f, 0.5f, 0.0f,
+
+                0.31f, 0.19f, 0.0f,
+               -0.65f, 0.65f, 0.0f,
+
+               -0.35f, 0.83f, 0.0f,
+                0.67f, 0.35f, 0.0f,
+
+               -0.37f, 0.15f, 0.0f,
+                0.65f, 0.69f, 0.0f,
+
+                -0.74f, 0.3f, 0.0f,
+                 0.34f, 0.84f,0.0f,
+
+                -0.37f, 0.15f, 0.0f,
+                -0.37f, -0.96f, 0.0f,
+
+                -0.74f, 0.3f, 0.0f,
+                -0.74f, -0.75f, 0.0f,
+
+                -1.0f, 0.1f, 0.0f,
+                 0.0f,-0.45f, 0.0f,
+
+                -1.0f, -0.25f, 0.0f,
+                 0.0f, -0.85f, 0.0f,
+
+                 0.31f, 0.19f, 0.0f,
+                 0.32f,-1.0f, 0.0f,
+
+                 0.67f, 0.35f, 0.0f,
+                 0.67f, -0.8f, 0.0f,
+
+                 1.0f, 0.1f, 0.0f,
+                 0.0f, -0.45f, 0.0f,
+
+                0.0f, -0.85f, 0.0f,
+                1.0f, -0.27f, 0.0f
+
             };
 
             //kicsereltem az 1-eseket 2-esekre az arrayban es vilagos szinu lett a forma
@@ -159,23 +196,56 @@ namespace Szeminarium1
                 };
             */
             float[] colorArray = new float[] {
-                // Felső lap (Világos szürke) - 4 csúcs
                 1.0f, 0.0f, 0.0f, 1.0f,
                 1.0f, 0.0f, 0.0f, 1.0f,
                 1.0f, 0.0f, 0.0f, 1.0f,
                 1.0f, 0.0f, 0.0f, 1.0f,
 
-                // Bal lap (Közép szürke) - 4 csúcs
                 0.0f, 1.0f, 0.0f, 1.0f,
                 0.0f, 1.0f, 0.0f, 1.0f,
                 0.0f, 1.0f, 0.0f, 1.0f,
                 0.0f, 1.0f, 0.0f, 1.0f,
 
-                // Jobb lap (Sötét szürke) - 4 csúcs
                 0.0f, 0.0f, 1.0f, 1.0f,
                 0.0f, 0.0f, 1.0f, 1.0f,
                 0.0f, 0.0f, 1.0f, 1.0f,
-                0.0f, 0.0f, 1.0f, 1.0f
+                0.0f, 0.0f, 1.0f, 1.0f,
+
+                0.0f, 0.0f, 0.0f, 1.0f,
+                0.0f, 0.0f, 0.0f, 1.0f,
+
+                0.0f, 0.0f, 0.0f, 1.0f,
+                0.0f, 0.0f, 0.0f, 1.0f,
+
+                0.0f, 0.0f, 0.0f, 1.0f,
+                0.0f, 0.0f, 0.0f, 1.0f,
+
+                0.0f, 0.0f, 0.0f, 1.0f,
+                0.0f, 0.0f, 0.0f, 1.0f,
+
+                0.0f, 0.0f, 0.0f, 1.0f,
+                0.0f, 0.0f, 0.0f, 1.0f,
+
+                0.0f, 0.0f, 0.0f, 1.0f,
+                0.0f, 0.0f, 0.0f, 1.0f,
+
+                0.0f, 0.0f, 0.0f, 1.0f,
+                0.0f, 0.0f, 0.0f, 1.0f,
+
+                0.0f, 0.0f, 0.0f, 1.0f,
+                0.0f, 0.0f, 0.0f, 1.0f,
+
+                0.0f, 0.0f, 0.0f, 1.0f,
+                0.0f, 0.0f, 0.0f, 1.0f,
+
+                0.0f, 0.0f, 0.0f, 1.0f,
+                0.0f, 0.0f, 0.0f, 1.0f,
+
+                0.0f, 0.0f, 0.0f, 1.0f,
+                0.0f, 0.0f, 0.0f, 1.0f,
+
+                0.0f, 0.0f, 0.0f, 1.0f,
+                0.0f, 0.0f, 0.0f, 1.0f
             };
 
             uint[] indexArray = new uint[] {
@@ -186,7 +256,20 @@ namespace Szeminarium1
                 4, 6 ,7,
 
                 8, 9, 10,
-                8, 10 ,11
+                8, 10 ,11,
+
+                12, 13,
+                14, 15,
+                16, 17,
+                18, 19,
+                20, 21,
+                22, 23,
+                24, 25,
+                26, 27,
+                28, 29,
+                30, 31,
+                32, 33,
+                34, 35
             };
 
             uint vertices = Gl.GenBuffer();
@@ -215,9 +298,9 @@ namespace Szeminarium1
 
             Gl.UseProgram(program);
 
-            Gl.DrawElements(GLEnum.Triangles, (uint)indexArray.Length, GLEnum.UnsignedInt, null); // we used element buffer
+            Gl.DrawElements(GLEnum.Triangles, 18, GLEnum.UnsignedInt, null); // we used element buffer
+            Gl.DrawElements(GLEnum.Lines, 24, GLEnum.UnsignedInt, (void*)(18 * sizeof(uint)));
             Gl.BindBuffer(GLEnum.ElementArrayBuffer, 0);
-            Gl.BindVertexArray(vao);
 
             // always unbound the vertex buffer first, so no halfway results are displayed by accident
             Gl.DeleteBuffer(vertices);
