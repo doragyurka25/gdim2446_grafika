@@ -1,0 +1,10 @@
+/indexLayout.xml
+/projectSettingsUpdater.xml
+/vcs.xml
+/workspace.xml
+/*.sln
+/*.metadata.v7.bin
+/*.projects.v*
+/.dbcache.v2
+/.futdcache.v2
+/.suo
