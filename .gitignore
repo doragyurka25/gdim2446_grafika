@@ -1,0 +1,18 @@
+# Visual Studio cache / user files
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.csproj
+*.xml
+*.v2
+
+../.idea/
+# Build eredmények
+[Bb]in/
+[Oo]bj/
+
+# Egyéb cache fájlok (amik a képen is látszanak)
+.dtbcache.v2
+.futdcache.v2
