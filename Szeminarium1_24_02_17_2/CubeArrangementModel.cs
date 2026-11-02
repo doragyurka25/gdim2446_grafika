@@ -22,17 +22,62 @@
         /// </summary>
         public double DiamondCubeAngleOwnRevolution { get; private set; } = 0;
 
+        public bool isLayerRotating { get; private set; } = false;
+
+        public float CurrentAngle { get; private set; } = 0.0f;//radianban van
+
+        private float targetAngle = 0.0f;
         /// <summary>
         /// The angle with which the diamond cube is rotated around the diagonal from bottom right front to top left back.
         /// </summary>
         public double DiamondCubeAngleRevolutionOnGlobalY { get; private set; } = 0;
 
+
+        public void rotateLayer(float dir)
+        {
+            if (isLayerRotating) return;
+
+            isLayerRotating = true;
+            targetAngle = CurrentAngle + (dir * (float)(Math.PI / 2.0));
+        }
+
+        public void ResetAngle()
+        {
+            CurrentAngle = 0.0f;
+            targetAngle = 0.0f;
+        }
         internal void AdvanceTime(double deltaTime)
         {
             // we do not advance the simulation when animation is stopped
+            //if (!AnimationEnabeld)
+            //  return;
+
+            if (isLayerRotating)
+            {
+                float step = 5.0f * (float)deltaTime;
+
+                if (CurrentAngle < targetAngle)
+                {
+                    CurrentAngle += step;
+                    if (CurrentAngle >= targetAngle)
+                    {
+                        CurrentAngle = targetAngle;
+                        isLayerRotating = false;
+                    }
+                }
+                else if (CurrentAngle > targetAngle)
+                {
+                    CurrentAngle -= step;
+                    if (CurrentAngle <= targetAngle)
+                    {
+                        CurrentAngle = targetAngle;
+                        isLayerRotating = false;
+                    }
+                }
+            }
+
             if (!AnimationEnabeld)
                 return;
-
             // set a simulation time
             Time += deltaTime;
 

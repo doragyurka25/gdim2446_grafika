@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Numerics;
+using System.Runtime.CompilerServices;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.OpenGL;
@@ -23,11 +24,12 @@ namespace Szeminarium1_24_02_17_2
         private static GlCube glCubeRotating;
 
         private static List<GlCube> cubies = new();
+        private static List<Matrix4X4<float>> cubieRotation = new();
 
         private const string ModelMatrixVariableName = "uModel";
         private const string ViewMatrixVariableName = "uView";
         private const string ProjectionMatrixVariableName = "uProjection";
-
+        private const string LayerRotationMatrixVariableName = "uLayerRotation";
         private static readonly string VertexShaderSource = @"
         #version 330 core
         layout (location = 0) in vec3 vPos;
@@ -36,13 +38,14 @@ namespace Szeminarium1_24_02_17_2
         uniform mat4 uModel;
         uniform mat4 uView;
         uniform mat4 uProjection;
+        uniform mat4 uLayerRotation;
 
 		out vec4 outCol;
         
         void main()
         {
 			outCol = vCol;
-            gl_Position = uProjection*uView*uModel*vec4(vPos.x, vPos.y, vPos.z, 1.0);
+            gl_Position = uProjection*uView*uLayerRotation*uModel*vec4(vPos.x, vPos.y, vPos.z, 1.0);
         }
         ";
 
@@ -58,6 +61,19 @@ namespace Szeminarium1_24_02_17_2
             FragColor = outCol;
         }
         ";
+
+        private static unsafe void SetLayerRotationMatrix(Matrix4X4<float> layerRotationMatrix)
+        {
+            int loc = Gl.GetUniformLocation(program, LayerRotationMatrixVariableName);
+
+            if (loc == -1)
+            {
+                throw new Exception("Nincs a shaderbe a rotation matrix");
+            }
+
+            Gl.UniformMatrix4(loc, 1, false, (float*)&layerRotationMatrix);
+            CheckError();
+        }
 
         static void Main(string[] args)
         {
@@ -101,7 +117,7 @@ namespace Szeminarium1_24_02_17_2
             SetUpObjects();
             createRubiksCube();
 
-            Gl.Enable(EnableCap.CullFace);
+            //Gl.Enable(EnableCap.CullFace);
 
             Gl.Enable(EnableCap.DepthTest);
             Gl.DepthFunc(DepthFunction.Lequal);
@@ -138,6 +154,7 @@ namespace Szeminarium1_24_02_17_2
 
         private static void Keyboard_KeyDown(IKeyboard keyboard, Key key, int arg3)
         {
+            float step = 0.2f;
             switch (key)
             {
                 case Key.Left:
@@ -148,23 +165,41 @@ namespace Szeminarium1_24_02_17_2
                     cameraDescriptor.IncreaseZYAngle();
                     break;
                 case Key.Down:
-                    cameraDescriptor.IncreaseDistance();
+                    cameraDescriptor.MoveDown(step);
                     break;
                 case Key.Up:
-                    cameraDescriptor.DecreaseDistance();
+                    cameraDescriptor.MoveUp(step);
                     break;
                 case Key.U:
                     cameraDescriptor.IncreaseZXAngle();
                     break;
-                case Key.D:
+                case Key.L:
                     cameraDescriptor.DecreaseZXAngle();
                     break;
+                case Key.W:
+                    cameraDescriptor.MoveForward(step); // Célpont felfelé mozgatása
+                    break;
+                case Key.S:
+                    cameraDescriptor.MoveBack(step);
+                    break;
+                case Key.A:
+                    cameraDescriptor.MoveLeft(step);
+                    break;
+                case Key.D:
+                    cameraDescriptor.MoveRight(step);
+                    break;
+
                 case Key.Space:
-                    cubeArrangementModel.AnimationEnabeld = !cubeArrangementModel.AnimationEnabeld;
+                    cubeArrangementModel.rotateLayer(1.0f);
+                    break;
+                case Key.Backspace:
+                    cubeArrangementModel.rotateLayer(-1.0f);
                     break;
             }
         }
 
+        //Letrehozok 27 db kiskockat, a megfelelo szinekkel
+        //mindegyiknek kulon Vao-ja van mert GlCube objectek
         private static void createRubiksCube()
         {
             float[] white = [1.0f, 1.0f, 1.0f, 1.0f];
@@ -221,6 +256,7 @@ namespace Szeminarium1_24_02_17_2
                         GlCube cubie = GlCube.CreateCubeWithFaceColors(Gl, felso, elso, bal, also, hatso, jobb);
 
                         cubies.Add(cubie);
+                        cubieRotation.Add(Matrix4X4<float>.Identity);
                     }
 
                 }
@@ -233,7 +269,38 @@ namespace Szeminarium1_24_02_17_2
             // multithreaded
             // make sure it is threadsafe
             // NO GL calls
+            //addig forgatjuk ami eleri a 90 fokos forgatast, ha vege akkor leallitjuk
+            bool wasRotating = cubeArrangementModel.isLayerRotating;
             cubeArrangementModel.AdvanceTime(deltaTime);
+
+            if (wasRotating && !cubeArrangementModel.isLayerRotating)
+            {
+                forgatas();
+            }
+        }
+
+        private static void forgatas()
+        {
+            Matrix4X4<float> rotation = Matrix4X4.CreateRotationY(cubeArrangementModel.CurrentAngle);
+
+            int index = 0;
+            for (int x = -1; x <= 1; x++)
+            {
+                for (int y = -1; y <= 1; y++)
+                {
+                    for (int z = -1; z <= 1; z++)
+                    {
+
+                        if (y == 1)
+                        {
+                            cubieRotation[index] = cubieRotation[index] * rotation;
+                        }
+                        index++;
+                    }
+                }
+            }
+            cubeArrangementModel.ResetAngle();
+
         }
 
         private static unsafe void Window_Render(double deltaTime)
@@ -250,6 +317,12 @@ namespace Szeminarium1_24_02_17_2
             SetViewMatrix();
             SetProjectionMatrix();
 
+            Matrix4X4<float> layerRotationMatrix = Matrix4X4<float>.Identity;
+            if (cubeArrangementModel.isLayerRotating)
+            {
+                layerRotationMatrix = Matrix4X4.CreateRotationY(cubeArrangementModel.CurrentAngle);
+            }
+
             float spacing = 1.0f;
             int index = 0;
             for (int x = -1; x <= 1; x++)
@@ -260,11 +333,20 @@ namespace Szeminarium1_24_02_17_2
                     {
                         Matrix4X4<float> scale = Matrix4X4.CreateScale(0.9f);
                         Matrix4X4<float> translation = Matrix4X4.CreateTranslation(x * spacing, y * spacing, z * spacing);
-                        Matrix4X4<float> modelMatrix = scale * translation;
-
+                        Matrix4X4<float> modelMatrix = scale * translation * cubieRotation[index];
                         SetModelMatrix(modelMatrix);
-                        GlCube current = cubies[index];
 
+
+                        if (y == 1)
+                        {
+                            SetLayerRotationMatrix(layerRotationMatrix);
+                        }
+                        else
+                        {
+                            SetLayerRotationMatrix(Matrix4X4<float>.Identity);
+                        }
+
+                        GlCube current = cubies[index];
                         Gl.BindVertexArray(current.Vao);
                         Gl.DrawElements(GLEnum.Triangles, current.IndexArrayLength, GLEnum.UnsignedInt, null);
                         Gl.BindVertexArray(0);

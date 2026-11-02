@@ -1,4 +1,5 @@
-﻿using Silk.NET.Maths;
+﻿using System.Numerics;
+using Silk.NET.Maths;
 
 namespace Szeminarium1_24_02_17_2
 {
@@ -14,6 +15,9 @@ namespace Szeminarium1_24_02_17_2
 
         private const double AngleChangeStepSize = Math.PI / 180 * 5;
 
+        private Vector3D<float> targetPoint = Vector3D<float>.Zero;
+        private Vector3D<float> position = new Vector3D<float>(7.0f, 4.0f, 4.0f);
+        private Vector3D<float> upVector = new Vector3D<float>(0.0f, 1.0f, 0.0f);
         /// <summary>
         /// Gets the position of the camera.
         /// </summary>
@@ -21,7 +25,7 @@ namespace Szeminarium1_24_02_17_2
         {
             get
             {
-                return GetPointFromAngles(7, 4, 4);
+                return position;
             }
         }
 
@@ -32,7 +36,7 @@ namespace Szeminarium1_24_02_17_2
         {
             get
             {
-                return Vector3D.Normalize(GetPointFromAngles(DistanceToOrigin, AngleToZYPlane, AngleToZXPlane + Math.PI / 2));
+                return Vector3D.Normalize(upVector);
             }
         }
 
@@ -44,8 +48,63 @@ namespace Szeminarium1_24_02_17_2
             get
             {
                 // For the moment the camera is always pointed at the origin.
-                return Vector3D<float>.Zero;
+                return targetPoint;
             }
+
+            set
+            {
+                targetPoint = value;
+            }
+        }
+
+        public void MoveForward(float dist)
+        {
+            Vector3D<float> direction = Vector3D.Normalize(targetPoint - position);
+            position += direction * dist;
+            targetPoint += direction * dist;
+        }
+
+        public void MoveBack(float dist)
+        {
+            MoveForward(-dist);
+        }
+
+        public void MoveRight(float dist)
+        {
+            Vector3D<float> direction = Vector3D.Normalize(targetPoint - position);
+            Vector3D<float> right = Vector3D.Normalize(Vector3D.Cross(direction, upVector));
+            position += right * dist;
+            targetPoint += right * dist;
+        }
+
+        public void MoveLeft(float dist)
+        {
+            MoveRight(-dist);
+        }
+
+        public void MoveUp(float dist)
+        {
+            position.Y += dist;
+            targetPoint.Y += dist;
+        }
+
+        public void MoveDown(float dist)
+        {
+            MoveUp(-dist);
+        }
+        public void MoveTargetX(float delta)
+        {
+            targetPoint.X += delta;
+        }
+
+        public void MoveTargetY(float delta)
+        {
+            targetPoint.Y += delta;
+        }
+
+        public void MoveTargetZ(float delta)
+        {
+            targetPoint.Z += delta;
         }
 
         public void IncreaseZXAngle()
