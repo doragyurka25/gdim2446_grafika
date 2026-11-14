@@ -50,6 +50,7 @@ namespace GrafikaSzeminarium
             };
 
             float[] colorArray = new float[16];
+            //bara szin a dezsahoz
             for (int i = 0; i < 4; i++)
             {
                 colorArray[i * 4 + 0] = rgba[0];
