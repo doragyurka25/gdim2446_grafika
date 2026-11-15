@@ -19,7 +19,7 @@ namespace GrafikaSzeminarium
         private static ImGuiController imGuiController;
 
         private static ModelObjectDescriptor cube;
-
+        private static ModelObjectDescriptor diamondCube;
         private static CameraDescriptor camera = new CameraDescriptor();
 
         private static CubeArrangementModel cubeArrangementModel = new CubeArrangementModel();
@@ -35,22 +35,20 @@ namespace GrafikaSzeminarium
 
         private const string ShinenessVariableName = "uShininess";
 
+        private static Vector3 ambiens = new Vector3(0.2f, 0.2f, 0.2f);
+        private static Vector3 diffuz = new Vector3(0.8f, 0.8f, 0.8f);
+        private static Vector3 spekularis = new Vector3(0.5f, 0.5f, 0.5f);
+
+        private static Vector3 ambiensSzin = new Vector3(0.3f, 0.3f, 0.3f);
+        private static Vector3 cubeFaceColor = new Vector3(1f, 0f, 0f);
+
+        private const string AmbientStrengthVariableName = "uAmbientStrength";
+        private const string DiffuseStrengthVariableName = "uDiffuseStrength";
+        private const string SpecularStrengthVariableName = "uSpecularStrength";
+        private const string AmbientColorVariableName = "uAmbientColor";
         private static float shininess = 50;
 
         private static uint program;
-
-        private static ModelObjectDescriptor flat;
-        private static ModelObjectDescriptor smooth;
-
-        private const int BoardCount = 18;
-        private const float h = 2f;
-        private const float sz = 1f;
-        private static readonly float StepAngle = 2f * MathF.PI / BoardCount; // 360/18 = 20 fok
-        private static readonly float HalfStepAngle = StepAngle / 2f; // 10 fok
-
-        private static readonly float Befogo = (sz / 2f) / MathF.Tan(HalfStepAngle); // 0.5/tan(10)
-        private static readonly float Radius = (sz / 2f) / MathF.Sin(HalfStepAngle); // 0.5/sin(10)
-
 
         static void Main(string[] args)
         {
@@ -70,36 +68,25 @@ namespace GrafikaSzeminarium
 
         private static void GraphicWindow_Closing()
         {
-            flat.Dispose();
-            smooth.Dispose();
-            //cube.Dispose();
+            cube.Dispose();
+            imGuiController.Dispose();
             Gl.DeleteProgram(program);
         }
 
         private static void GraphicWindow_Load()
         {
             Gl = graphicWindow.CreateOpenGL();
-
             var inputContext = graphicWindow.CreateInput();
             foreach (var keyboard in inputContext.Keyboards)
             {
                 keyboard.KeyDown += Keyboard_KeyDown;
             }
 
-            // Handle resizes
-            graphicWindow.FramebufferResize += s =>
-            {
-                // Adjust the viewport to the new window size
-                Gl.Viewport(s);
-            };
-
-
-
             imGuiController = new ImGuiController(Gl, graphicWindow, inputContext);
 
-            float[] szin = new float[] { 0.75f, 0.5f, 0.25f, 1f };
-            flat = ModelObjectDescriptor.CreateRectangle(Gl, sz, h, false, HalfStepAngle, szin);
-            smooth = ModelObjectDescriptor.CreateRectangle(Gl, sz, h, true, HalfStepAngle, szin);
+            cube = ModelObjectDescriptor.CreateCube(Gl);
+
+            updateCubeFaceColor();
 
             Gl.ClearColor(System.Drawing.Color.White);
             Gl.CullFace(TriangleFace.Back);
@@ -172,7 +159,7 @@ namespace GrafikaSzeminarium
                 case Key.Up:
                     camera.DecreaseDistance();
                     break;
-                case Key.U:
+                case Key.A:
                     camera.IncreaseZXAngle();
                     break;
                 case Key.D:
@@ -189,75 +176,116 @@ namespace GrafikaSzeminarium
             // NO OpenGL
             // make it threadsafe
             cubeArrangementModel.AdvanceTime(deltaTime);
-
-            imGuiController.Update((float)deltaTime);
         }
-
         private static unsafe void GraphicWindow_Render(double deltaTime)
         {
+            imGuiController.Update((float)deltaTime);
+
+            //ez kellett ahhoz hogy az ablak skalazasa miatt meg mukodjon helyesen a rajzolas
+            var io = ImGuiNET.ImGui.GetIO();
+            io.DisplayFramebufferScale = new Vector2(
+                (float)graphicWindow.FramebufferSize.X / graphicWindow.Size.X,
+                (float)graphicWindow.FramebufferSize.Y / graphicWindow.Size.Y);
+
+            //Az ImGui rendereles allitja a viewportot is, ha ezt nem allitom vissza
+            //akkor osszenyomodik a rajz
+            Gl.Viewport(graphicWindow.FramebufferSize);
+
             Gl.Clear(ClearBufferMask.ColorBufferBit);
             Gl.Clear(ClearBufferMask.DepthBufferBit);
 
             Gl.UseProgram(program);
 
-            var camPos = new Vector3(camera.Position.X, camera.Position.Y, camera.Position.Z);
-            SetUniform3(LightColorVariableName, new Vector3(1f, 1f, 1f));
-            SetUniform3(LightPositionVariableName, camPos);
-            SetUniform3(ViewPositionVariableName, camPos);
-            SetUniform1(ShinenessVariableName, shininess);
+            SetUniform3(AmbientStrengthVariableName, ambiens);
+            SetUniform3(DiffuseStrengthVariableName, diffuz);
+            SetUniform3(SpecularStrengthVariableName, spekularis);
+            SetUniform3(AmbientColorVariableName, ambiensSzin);
 
-            // SetUniform3(LightColorVariableName, new Vector3(1f, 1f, 1f));
-            // SetUniform3(LightPositionVariableName, new Vector3(0f, 1.2f, 0f));
-            // SetUniform3(ViewPositionVariableName, new Vector3(camera.Position.X, camera.Position.Y, camera.Position.Z));
-            // SetUniform1(ShinenessVariableName, shininess);
+            SetUniform3(LightColorVariableName, new Vector3(1f, 1f, 1f));
+            SetUniform3(LightPositionVariableName, new Vector3(camera.Position.X, camera.Position.Y, camera.Position.Z));
+            SetUniform3(ViewPositionVariableName, new Vector3(camera.Position.X, camera.Position.Y, camera.Position.Z));
+            SetUniform1(ShinenessVariableName, shininess);
 
             var viewMatrix = Matrix4X4.CreateLookAt(camera.Position, camera.Target, camera.UpVector);
             SetMatrix(viewMatrix, ViewMatrixVariableName);
 
-            float aspect = (float)graphicWindow.Size.X / graphicWindow.Size.Y;
+            float aspect = (float)graphicWindow.FramebufferSize.X / graphicWindow.FramebufferSize.Y;
             var projectionMatrix = Matrix4X4.CreatePerspectiveFieldOfView<float>((float)(Math.PI / 3), aspect, 0.1f, 100f);
             SetMatrix(projectionMatrix, ProjectionMatrixVariableName);
 
 
-            float xOffset = Radius + 0.6f;
-            DrawBarrel(flat, -xOffset);
-            DrawBarrel(smooth, xOffset);
 
-            // var modelMatrixCenterCube = Matrix4X4.CreateScale((float)cubeArrangementModel.CenterCubeScale);
-            // SetModelMatrix(modelMatrixCenterCube);
-            // DrawModelObject(cube);
+            var modelMatrixCenterCube = Matrix4X4.CreateScale((float)cubeArrangementModel.CenterCubeScale);
+            SetModelMatrix(modelMatrixCenterCube);
+            DrawModelObject(cube);
 
-            // Matrix4X4<float> diamondScale = Matrix4X4.CreateScale(0.25f);
-            // Matrix4X4<float> rotx = Matrix4X4.CreateRotationX((float)Math.PI / 4f);
-            // Matrix4X4<float> rotz = Matrix4X4.CreateRotationZ((float)Math.PI / 4f);
-            // Matrix4X4<float> roty = Matrix4X4.CreateRotationY((float)cubeArrangementModel.DiamondCubeLocalAngle);
-            // Matrix4X4<float> trans = Matrix4X4.CreateTranslation(1f, 1f, 0f);
-            // Matrix4X4<float> rotGlobalY = Matrix4X4.CreateRotationY((float)cubeArrangementModel.DiamondCubeGlobalYAngle);
-            // Matrix4X4<float> dimondCubeModelMatrix = diamondScale * rotx * rotz * roty * trans * rotGlobalY;
-            // SetModelMatrix(dimondCubeModelMatrix);
-            // DrawModelObject(cube);
+            //ez kellett ahhoz, hogy tudjam mozgatni a sslideres ablakot
+            ImGuiNET.ImGui.SetNextWindowPos(new Vector2(10, 10), ImGuiNET.ImGuiCond.FirstUseEver);
+            ImGuiNET.ImGui.SetNextWindowSize(new Vector2(380, 280), ImGuiNET.ImGuiCond.FirstUseEver);
+            ImGuiNET.ImGui.Begin(
+                "Anyagjellemzok es Feny",
+                ImGuiNET.ImGuiWindowFlags.NoCollapse
+            );
 
-            //ImGuiNET.ImGui.ShowDemoWindow();
-            ImGuiNET.ImGui.Begin("Lighting", ImGuiNET.ImGuiWindowFlags.AlwaysAutoResize | ImGuiNET.ImGuiWindowFlags.NoCollapse);
-            ImGuiNET.ImGui.SliderFloat("Shininess", ref shininess, 5, 100);
+            ImGuiNET.ImGui.Text("Illuminacios komponensek (RGB)");
+            ImGuiNET.ImGui.Separator();
+
+            ImGuiNET.ImGui.SliderFloat3("Ambient Strength", ref ambiens, 0.0f, 2.0f);
+            ImGuiNET.ImGui.SliderFloat3("Diffuse Strength", ref diffuz, 0.0f, 2.0f);
+            ImGuiNET.ImGui.SliderFloat3("Specular Strength", ref spekularis, 0.0f, 2.0f);
+            ImGuiNET.ImGui.SliderFloat("Shininess", ref shininess, 5f, 100f);
+
+            ImGuiNET.ImGui.Separator();
+            ImGuiNET.ImGui.Text("Hatterfeny (Ambient Light)");
+            ImGuiNET.ImGui.SliderFloat3("Ambient Color", ref ambiensSzin, 0.0f, 1.0f);
+
+            ImGuiNET.ImGui.Separator();
+            ImGuiNET.ImGui.Text("Kocka szinezese");
+
+            if (ImGuiNET.ImGui.ColorEdit3("Cube face color", ref cubeFaceColor))
+            {
+                updateCubeFaceColor();
+            }
+
             ImGuiNET.ImGui.End();
-
             imGuiController.Render();
         }
 
-        private static unsafe void DrawBarrel(ModelObjectDescriptor board, float xOffset)
-        {
-            Matrix4X4<float> moveOut = Matrix4X4.CreateTranslation(0f, 0f, Befogo);
-            Matrix4X4<float> moveBarrel = Matrix4X4.CreateTranslation(xOffset, 0f, 0f);
 
-            for (int i = 0; i < BoardCount; i++)
+        private static unsafe void updateCubeFaceColor()
+        {
+            //24 csucspont * 4 float(rgba)
+            float[] colors = new float[24 * 4];
+
+            //lapok szine
+            //en a felso lap szinet akarom valtoztatni ezert az nem fix
+            Vector3[] faceColors =
             {
-                Matrix4X4<float> rot = Matrix4X4.CreateRotationY(i * StepAngle);
-                //eloszor ki kell tolnunk a Z tengely menten a Befogo-val, majd elforgatni az Y tengely korul
-                //majd eltoljuk
-                SetModelMatrix(moveOut * rot * moveBarrel);
-                DrawModelObject(board);
+                cubeFaceColor,
+                new Vector3(0f, 1f, 0f),
+                new Vector3(0f, 0f, 1f),
+                new Vector3(1f, 0f, 1f),
+                new Vector3(0f, 1f, 1f),
+                new Vector3(1f, 1f, 0f)
+            };
+
+            //minden csucshoz ugyanazt a szin adja
+            for (int f = 0; f < 6; f++)
+            {
+                for (int cs = 0; cs < 4; cs++)
+                {
+                    //hol kezdodik az adott csucs a tombben
+                    int ind = (f * 4 + cs) * 4;
+                    colors[ind + 0] = faceColors[f].X;
+                    colors[ind + 1] = faceColors[f].Y;
+                    colors[ind + 2] = faceColors[f].Z;
+                    colors[ind + 3] = 1f;
+                }
             }
+            Gl.BindBuffer(GLEnum.ArrayBuffer, cube.Colors);
+
+            Gl.BufferData(GLEnum.ArrayBuffer, (ReadOnlySpan<float>)colors.AsSpan(), GLEnum.DynamicDraw);
+            Gl.BindBuffer(GLEnum.ArrayBuffer, 0);
         }
 
         private static unsafe void SetModelMatrix(Matrix4X4<float> modelMatrix)
