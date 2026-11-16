@@ -122,6 +122,15 @@ namespace Szeminarium1_24_02_17_2
                 20, 23, 22
             };
 
+            float[] normalArray = {
+                0,1,0,  0,1,0,  0,1,0,  0,1,0,      // felső
+                0,0,1,  0,0,1,  0,0,1,  0,0,1,      // elülső
+                -1,0,0, -1,0,0, -1,0,0, -1,0,0,      // bal
+                0,-1,0, 0,-1,0, 0,-1,0, 0,-1,0,     // alsó
+                0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1,     // hátsó
+                1,0,0,  1,0,0,  1,0,0,  1,0,0       // jobb
+            };
+
             uint vertices = Gl.GenBuffer();
             Gl.BindBuffer(GLEnum.ArrayBuffer, vertices);
             Gl.BufferData(GLEnum.ArrayBuffer, (ReadOnlySpan<float>)vertexArray.AsSpan(), GLEnum.StaticDraw);
@@ -133,6 +142,12 @@ namespace Szeminarium1_24_02_17_2
             Gl.BufferData(GLEnum.ArrayBuffer, (ReadOnlySpan<float>)colorArray.AsSpan(), GLEnum.StaticDraw);
             Gl.VertexAttribPointer(1, 4, VertexAttribPointerType.Float, false, 0, null);
             Gl.EnableVertexAttribArray(1);
+
+            uint normals = Gl.GenBuffer();
+            Gl.BindBuffer(GLEnum.ArrayBuffer, normals);
+            Gl.BufferData(GLEnum.ArrayBuffer, (ReadOnlySpan<float>)normalArray.AsSpan(), GLEnum.StaticDraw);
+            Gl.VertexAttribPointer(2, 3, VertexAttribPointerType.Float, false, 0, null);
+            Gl.EnableVertexAttribArray(2);
 
             uint indices = Gl.GenBuffer();
             Gl.BindBuffer(GLEnum.ElementArrayBuffer, indices);

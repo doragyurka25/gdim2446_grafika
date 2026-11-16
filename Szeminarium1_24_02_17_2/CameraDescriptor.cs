@@ -5,7 +5,7 @@ namespace Szeminarium1_24_02_17_2
 {
     internal class CameraDescriptor
     {
-        private double DistanceToOrigin = 1;
+        private double DistanceToOrigin = 8;
 
         private double AngleToZYPlane = 0;
 
@@ -18,6 +18,8 @@ namespace Szeminarium1_24_02_17_2
         private Vector3D<float> targetPoint = Vector3D<float>.Zero;
         private Vector3D<float> position = new Vector3D<float>(7.0f, 4.0f, 4.0f);
         private Vector3D<float> upVector = new Vector3D<float>(0.0f, 1.0f, 0.0f);
+
+        private const double MaxElevation = Math.PI / 180 * 85;
         /// <summary>
         /// Gets the position of the camera.
         /// </summary>
@@ -25,7 +27,7 @@ namespace Szeminarium1_24_02_17_2
         {
             get
             {
-                return position;
+                return targetPoint + GetPointFromAngles(DistanceToOrigin, AngleToZYPlane, AngleToZXPlane);
             }
         }
 
@@ -59,8 +61,7 @@ namespace Szeminarium1_24_02_17_2
 
         public void MoveForward(float dist)
         {
-            Vector3D<float> direction = Vector3D.Normalize(targetPoint - position);
-            position += direction * dist;
+            Vector3D<float> direction = Vector3D.Normalize(targetPoint - Position);
             targetPoint += direction * dist;
         }
 
@@ -71,9 +72,8 @@ namespace Szeminarium1_24_02_17_2
 
         public void MoveRight(float dist)
         {
-            Vector3D<float> direction = Vector3D.Normalize(targetPoint - position);
+            Vector3D<float> direction = Vector3D.Normalize(targetPoint - Position);
             Vector3D<float> right = Vector3D.Normalize(Vector3D.Cross(direction, upVector));
-            position += right * dist;
             targetPoint += right * dist;
         }
 
@@ -84,7 +84,6 @@ namespace Szeminarium1_24_02_17_2
 
         public void MoveUp(float dist)
         {
-            position.Y += dist;
             targetPoint.Y += dist;
         }
 
@@ -109,12 +108,12 @@ namespace Szeminarium1_24_02_17_2
 
         public void IncreaseZXAngle()
         {
-            AngleToZXPlane += AngleChangeStepSize;
+            AngleToZXPlane += Math.Min(AngleChangeStepSize, MaxElevation);
         }
 
         public void DecreaseZXAngle()
         {
-            AngleToZXPlane -= AngleChangeStepSize;
+            AngleToZXPlane -= Math.Max(AngleChangeStepSize, MaxElevation);
         }
 
         public void IncreaseZYAngle()

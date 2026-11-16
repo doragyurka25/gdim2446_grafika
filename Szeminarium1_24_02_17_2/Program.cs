@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.OpenGL;
+using Silk.NET.OpenGL.Extensions.ImGui;
 using Silk.NET.Windowing;
 
 namespace Szeminarium1_24_02_17_2
@@ -22,18 +23,36 @@ namespace Szeminarium1_24_02_17_2
         private static GlCube glCubeCentered;
 
         private static GlCube glCubeRotating;
+        private static ImGuiController imGuiController;
 
         private static List<GlCube> cubies = new();
         private static List<Matrix4X4<float>> cubieRotation = new();
 
+        private static System.Numerics.Vector3 lightColor = new(1.0f, 1.0f, 1.0f);
+        private static System.Numerics.Vector3 lightPos = new(3.0f, 5.0f, 3.0f);
+
+        private static float ambiens = 0.2f;
+        private static float spekularis = 0.5f;
+        private static float shininess = 50;
+
         private const string ModelMatrixVariableName = "uModel";
+        private const string NormalMatrixVariableName = "uNormal";
         private const string ViewMatrixVariableName = "uView";
         private const string ProjectionMatrixVariableName = "uProjection";
         private const string LayerRotationMatrixVariableName = "uLayerRotation";
+        private const string LightColorVariableName = "uLightColor";
+        private const string LightPositionVariableName = "uLightPos";
+        private const string ViewPositionVariableName = "uViewPos";
+        private const string AmbientStrengthVariableName = "uAmbientStrength";
+        private const string SpecularStrengthVariableName = "uSpecularStrength";
+        private const string ShinenessVariableName = "uShininess";
+
+
         private static readonly string VertexShaderSource = @"
         #version 330 core
         layout (location = 0) in vec3 vPos;
 		layout (location = 1) in vec4 vCol;
+        layout (location = 2) in vec3 vNormal;
 
         uniform mat4 uModel;
         uniform mat4 uView;
@@ -41,11 +60,19 @@ namespace Szeminarium1_24_02_17_2
         uniform mat4 uLayerRotation;
 
 		out vec4 outCol;
+        out vec3 outNormal;
+        out vec3 outWorldPosition;
         
         void main()
         {
-			outCol = vCol;
-            gl_Position = uProjection*uView*uLayerRotation*uModel*vec4(vPos.x, vPos.y, vPos.z, 1.0);
+            outCol = vCol;
+            mat4 modelMat = uLayerRotation * uModel;
+            vec4 worldPos = modelMat * vec4(vPos, 1.0);
+            outWorldPosition = worldPos.xyz;
+            
+            outNormal = mat3(transpose(inverse(modelMat))) * vNormal;
+            
+            gl_Position = uProjection * uView * worldPos;
         }
         ";
 
@@ -55,10 +82,34 @@ namespace Szeminarium1_24_02_17_2
         out vec4 FragColor;
 
 		in vec4 outCol;
+        in vec3 outNormal;
+        in vec3 outWorldPosition;
+
+        uniform vec3 uLightColor;
+        uniform vec3 uLightPos;
+        uniform vec3 uViewPos;
+        uniform float uAmbientStrength;
+        uniform float uSpecularStrength;
+        uniform float uShininess;
 
         void main()
         {
-            FragColor = outCol;
+            vec3 objectColor = outCol.rgb;
+
+            vec3 ambient = uAmbientStrength * uLightColor;
+
+            vec3 norm = normalize(outNormal);
+            vec3 lightDir = normalize(uLightPos - outWorldPosition);
+            float diff = max(dot(norm, lightDir), 0.0);
+            vec3 diffuse = diff * uLightColor;
+
+            vec3 viewDir = normalize(uViewPos - outWorldPosition);
+            vec3 reflectDir = reflect(-lightDir, norm);
+            float spec = pow(max(dot(viewDir, reflectDir),0.0), uShininess);
+            vec3 specular = uSpecularStrength * spec * uLightColor;
+
+            vec3 result = (ambient + diffuse + specular) * objectColor;
+            FragColor = vec4(result, outCol.a);
         }
         ";
 
@@ -117,6 +168,8 @@ namespace Szeminarium1_24_02_17_2
             SetUpObjects();
             createRubiksCube();
 
+            imGuiController = new ImGuiController(Gl, window, inputContext);
+
             //Gl.Enable(EnableCap.CullFace);
 
             Gl.Enable(EnableCap.DepthTest);
@@ -155,6 +208,10 @@ namespace Szeminarium1_24_02_17_2
         private static void Keyboard_KeyDown(IKeyboard keyboard, Key key, int arg3)
         {
             float step = 0.2f;
+            if (ImGuiNET.ImGui.GetIO().WantCaptureKeyboard)
+            {
+                return;
+            }
             switch (key)
             {
                 case Key.Left:
@@ -306,13 +363,60 @@ namespace Szeminarium1_24_02_17_2
         private static unsafe void Window_Render(double deltaTime)
         {
             //Console.WriteLine($"Render after {deltaTime} [s].");
+            imGuiController.Update((float)deltaTime);
 
+            var io = ImGuiNET.ImGui.GetIO();
+            io.DisplayFramebufferScale = new Vector2(
+                (float)window.FramebufferSize.X / window.Size.X,
+                (float)window.FramebufferSize.Y / window.Size.Y);
+
+            Gl.Viewport(window.FramebufferSize);
             // GL here
             Gl.Clear(ClearBufferMask.ColorBufferBit);
             Gl.Clear(ClearBufferMask.DepthBufferBit);
 
             Gl.UseProgram(program);
 
+            SetUniform3(LightColorVariableName, lightColor);
+            SetUniform3(LightPositionVariableName, lightPos);
+            SetUniform3(ViewPositionVariableName, new Vector3(cameraDescriptor.Position.X, cameraDescriptor.Position.Y, cameraDescriptor.Position.Z));
+            SetUniform1(AmbientStrengthVariableName, ambiens);
+            SetUniform1(SpecularStrengthVariableName, spekularis);
+            SetUniform1(ShinenessVariableName, shininess);
+
+            ImGuiNET.ImGui.SetNextWindowPos(new System.Numerics.Vector2(10, 10), ImGuiNET.ImGuiCond.FirstUseEver);
+            ImGuiNET.ImGui.SetNextWindowSize(new System.Numerics.Vector2(900, 620), ImGuiNET.ImGuiCond.FirstUseEver);
+
+            ImGuiNET.ImGui.Begin("Feny es Navigacio", ImGuiNET.ImGuiWindowFlags.NoCollapse);
+
+            ImGuiNET.ImGui.Text("Megvilagitas Szine (RGB)");
+            ImGuiNET.ImGui.SliderFloat3("Feny Szin", ref lightColor, 0.0f, 1.0f);
+
+            ImGuiNET.ImGui.Separator();
+            ImGuiNET.ImGui.Text("Anyag es Feny Jellemzok");
+            ImGuiNET.ImGui.SliderFloat("Ambient Erosség", ref ambiens, 0.0f, 1.0f);
+            ImGuiNET.ImGui.SliderFloat("Specular Erosség", ref spekularis, 0.0f, 1.0f);
+            ImGuiNET.ImGui.SliderFloat("Csillogas (Shininess)", ref shininess, 1.0f, 128.0f);
+
+            ImGuiNET.ImGui.Separator();
+
+            ImGuiNET.ImGui.Text("Fenyforras Pozicioja");
+            ImGuiNET.ImGui.InputFloat3("Feny Poz", ref lightPos);
+
+            ImGuiNET.ImGui.Separator();
+            ImGuiNET.ImGui.Text("Forgatasok Navigacioja");
+
+            if (ImGuiNET.ImGui.Button("Forgatas (+)"))
+            {
+                if (!cubeArrangementModel.isLayerRotating)
+                    cubeArrangementModel.rotateLayer(1.0f);
+            }
+            if (ImGuiNET.ImGui.Button("Forgatas Ellenkezo (-)"))
+            {
+                if (!cubeArrangementModel.isLayerRotating)
+                    cubeArrangementModel.rotateLayer(-1.0f);
+            }
+            ImGuiNET.ImGui.End();
 
             SetViewMatrix();
             SetProjectionMatrix();
@@ -355,32 +459,28 @@ namespace Szeminarium1_24_02_17_2
                     }
                 }
             }
+
+            imGuiController.Render();
         }
 
-        private static unsafe void DrawRevolvingCube()
+        private static unsafe void SetUniform3(string name, System.Numerics.Vector3 value)
         {
-            Matrix4X4<float> diamondScale = Matrix4X4.CreateScale(0.25f);
-            Matrix4X4<float> rotx = Matrix4X4.CreateRotationX((float)Math.PI / 4f);
-            Matrix4X4<float> rotz = Matrix4X4.CreateRotationZ((float)Math.PI / 4f);
-            Matrix4X4<float> rotLocY = Matrix4X4.CreateRotationY((float)cubeArrangementModel.DiamondCubeAngleOwnRevolution);
-            Matrix4X4<float> trans = Matrix4X4.CreateTranslation(1f, 1f, 0f);
-            Matrix4X4<float> rotGlobY = Matrix4X4.CreateRotationY((float)cubeArrangementModel.DiamondCubeAngleRevolutionOnGlobalY);
-            Matrix4X4<float> modelMatrix = diamondScale * rotx * rotz * rotLocY * trans * rotGlobY;
-
-            SetModelMatrix(modelMatrix);
-            Gl.BindVertexArray(glCubeRotating.Vao);
-            Gl.DrawElements(GLEnum.Triangles, glCubeRotating.IndexArrayLength, GLEnum.UnsignedInt, null);
-            Gl.BindVertexArray(0);
+            int loc = Gl.GetUniformLocation(program, name);
+            if (loc != -1)
+            {
+                Gl.Uniform3(loc, value);
+            }
         }
 
-        private static unsafe void DrawPulsingCenterCube()
+        private static unsafe void SetUniform1(string name, float value)
         {
-            var modelMatrixForCenterCube = Matrix4X4.CreateScale((float)cubeArrangementModel.CenterCubeScale);
-            SetModelMatrix(modelMatrixForCenterCube);
-            Gl.BindVertexArray(glCubeCentered.Vao);
-            Gl.DrawElements(GLEnum.Triangles, glCubeCentered.IndexArrayLength, GLEnum.UnsignedInt, null);
-            Gl.BindVertexArray(0);
+            int loc = Gl.GetUniformLocation(program, name);
+            if (loc != -1)
+            {
+                Gl.Uniform1(loc, value);
+            }
         }
+
 
         private static unsafe void SetModelMatrix(Matrix4X4<float> modelMatrix)
         {
