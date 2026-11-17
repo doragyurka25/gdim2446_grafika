@@ -24,6 +24,10 @@ namespace GrafikaSzeminarium
 
         private static CubeArrangementModel cubeArrangementModel = new CubeArrangementModel();
 
+        private static uint program;
+        private static int shadingMode;
+        private static uint programPhong;
+        private static uint programGouraud;
         private const string ModelMatrixVariableName = "uModel";
         private const string NormalMatrixVariableName = "uNormal";
         private const string ViewMatrixVariableName = "uView";
@@ -36,8 +40,6 @@ namespace GrafikaSzeminarium
         private const string ShinenessVariableName = "uShininess";
 
         private static float shininess = 50;
-
-        private static uint program;
 
         private static ModelObjectDescriptor flat;
         private static ModelObjectDescriptor smooth;
@@ -56,7 +58,7 @@ namespace GrafikaSzeminarium
         {
             WindowOptions windowOptions = WindowOptions.Default;
             windowOptions.Title = "Grafika szeminárium";
-            windowOptions.Size = new Silk.NET.Maths.Vector2D<int>(500, 500);
+            windowOptions.Size = new Silk.NET.Maths.Vector2D<int>(700, 700);
 
             graphicWindow = Window.Create(windowOptions);
 
@@ -86,15 +88,7 @@ namespace GrafikaSzeminarium
                 keyboard.KeyDown += Keyboard_KeyDown;
             }
 
-            // Handle resizes
-            graphicWindow.FramebufferResize += s =>
-            {
-                // Adjust the viewport to the new window size
-                Gl.Viewport(s);
-            };
-
-
-
+            graphicWindow.FramebufferResize += size => Gl.Viewport(size);
             imGuiController = new ImGuiController(Gl, graphicWindow, inputContext);
 
             float[] szin = new float[] { 0.75f, 0.5f, 0.25f, 1f };
@@ -108,40 +102,71 @@ namespace GrafikaSzeminarium
             Gl.DepthFunc(DepthFunction.Lequal);
 
 
-            uint vshader = Gl.CreateShader(ShaderType.VertexShader);
-            uint fshader = Gl.CreateShader(ShaderType.FragmentShader);
+            uint vshaderPhong = Gl.CreateShader(ShaderType.VertexShader);
+            uint fshaderPhong = Gl.CreateShader(ShaderType.FragmentShader);
 
-            Gl.ShaderSource(vshader, GetEmbeddedResourceAsString("Shaders.VertexShader.vert"));
-            Gl.CompileShader(vshader);
-            Gl.GetShader(vshader, ShaderParameterName.CompileStatus, out int vStatus);
+            Gl.ShaderSource(vshaderPhong, GetEmbeddedResourceAsString("Shaders.VertexShader.vert"));
+            Gl.CompileShader(vshaderPhong);
+            Gl.GetShader(vshaderPhong, ShaderParameterName.CompileStatus, out int vStatus);
             if (vStatus != (int)GLEnum.True)
-                throw new Exception("Vertex shader failed to compile: " + Gl.GetShaderInfoLog(vshader));
+                throw new Exception("Vertex shader failed to compile: " + Gl.GetShaderInfoLog(vshaderPhong));
 
-            Gl.ShaderSource(fshader, GetEmbeddedResourceAsString("Shaders.FragmentShader.frag"));
-            Gl.CompileShader(fshader);
-            Gl.GetShader(fshader, ShaderParameterName.CompileStatus, out int fStatus);
+            Gl.ShaderSource(fshaderPhong, GetEmbeddedResourceAsString("Shaders.FragmentShader.frag"));
+            Gl.CompileShader(fshaderPhong);
+            Gl.GetShader(fshaderPhong, ShaderParameterName.CompileStatus, out int fStatus);
             if (fStatus != (int)GLEnum.True)
-                throw new Exception("Fragment shader failed to compile: " + Gl.GetShaderInfoLog(fshader));
+                throw new Exception("Fragment shader failed to compile: " + Gl.GetShaderInfoLog(fshaderPhong));
 
-            program = Gl.CreateProgram();
-            Gl.AttachShader(program, vshader);
-            Gl.AttachShader(program, fshader);
-            Gl.LinkProgram(program);
+            programPhong = Gl.CreateProgram();
+            Gl.AttachShader(programPhong, vshaderPhong);
+            Gl.AttachShader(programPhong, fshaderPhong);
+            Gl.LinkProgram(programPhong);
 
-            Gl.DetachShader(program, vshader);
-            Gl.DetachShader(program, fshader);
-            Gl.DeleteShader(vshader);
-            Gl.DeleteShader(fshader);
-            if ((ErrorCode)Gl.GetError() != ErrorCode.NoError)
+            Gl.DetachShader(programPhong, vshaderPhong);
+            Gl.DetachShader(programPhong, fshaderPhong);
+            Gl.DeleteShader(vshaderPhong);
+            Gl.DeleteShader(fshaderPhong);
+
+            Gl.GetProgram(programPhong, GLEnum.LinkStatus, out var statusPhong);
+            if (statusPhong == 0)
             {
-
+                throw new Exception($"Error linking Phong shader: {Gl.GetProgramInfoLog(programPhong)}");
             }
 
-            Gl.GetProgram(program, GLEnum.LinkStatus, out var status);
+            uint vshaderGouraud = Gl.CreateShader(ShaderType.VertexShader);
+            uint fshaderGouraud = Gl.CreateShader(ShaderType.FragmentShader);
+
+            Gl.ShaderSource(vshaderGouraud, GetEmbeddedResourceAsString("Shaders.Gouraud.vert"));
+            Gl.CompileShader(vshaderGouraud);
+            Gl.GetShader(vshaderGouraud, ShaderParameterName.CompileStatus, out int vStatusG);
+            if (vStatusG != (int)GLEnum.True)
+                throw new Exception("Vertex shader failed to compile: " + Gl.GetShaderInfoLog(vshaderGouraud));
+
+
+            Gl.ShaderSource(fshaderGouraud, GetEmbeddedResourceAsString("Shaders.Gouraud.frag"));
+            Gl.CompileShader(fshaderGouraud);
+            Gl.GetShader(fshaderGouraud, ShaderParameterName.CompileStatus, out int fStatusG);
+            if (fStatusG != (int)GLEnum.True)
+                throw new Exception("Fragment shader failed to compile: " + Gl.GetShaderInfoLog(fshaderGouraud));
+
+
+            programGouraud = Gl.CreateProgram();
+            Gl.AttachShader(programGouraud, vshaderGouraud);
+            Gl.AttachShader(programGouraud, fshaderGouraud);
+            Gl.LinkProgram(programGouraud);
+
+            Gl.DetachShader(programGouraud, vshaderGouraud);
+            Gl.DetachShader(programGouraud, fshaderGouraud);
+            Gl.DeleteShader(vshaderGouraud);
+            Gl.DeleteShader(fshaderGouraud);
+
+            Gl.GetProgram(programGouraud, GLEnum.LinkStatus, out var status);
             if (status == 0)
             {
-                Console.WriteLine($"Error linking shader {Gl.GetProgramInfoLog(program)}");
+                Console.WriteLine($"Error linking shader {Gl.GetProgramInfoLog(programGouraud)}");
             }
+
+            program = programPhong;
         }
 
         private static string GetEmbeddedResourceAsString(string resourceRelativePath)
@@ -189,12 +214,15 @@ namespace GrafikaSzeminarium
             // NO OpenGL
             // make it threadsafe
             cubeArrangementModel.AdvanceTime(deltaTime);
-
-            imGuiController.Update((float)deltaTime);
         }
 
         private static unsafe void GraphicWindow_Render(double deltaTime)
         {
+            imGuiController.Update((float)deltaTime);
+            var fb = graphicWindow.FramebufferSize;
+            Gl.Viewport(0, 0, (uint)fb.X, (uint)fb.Y);
+            program = (shadingMode == 0) ? programPhong : programGouraud;
+
             Gl.Clear(ClearBufferMask.ColorBufferBit);
             Gl.Clear(ClearBufferMask.DepthBufferBit);
 
@@ -214,7 +242,7 @@ namespace GrafikaSzeminarium
             var viewMatrix = Matrix4X4.CreateLookAt(camera.Position, camera.Target, camera.UpVector);
             SetMatrix(viewMatrix, ViewMatrixVariableName);
 
-            float aspect = (float)graphicWindow.Size.X / graphicWindow.Size.Y;
+            float aspect = (float)fb.X / fb.Y;
             var projectionMatrix = Matrix4X4.CreatePerspectiveFieldOfView<float>((float)(Math.PI / 3), aspect, 0.1f, 100f);
             SetMatrix(projectionMatrix, ProjectionMatrixVariableName);
 
@@ -237,9 +265,14 @@ namespace GrafikaSzeminarium
             // SetModelMatrix(dimondCubeModelMatrix);
             // DrawModelObject(cube);
 
-            //ImGuiNET.ImGui.ShowDemoWindow();
-            ImGuiNET.ImGui.Begin("Lighting", ImGuiNET.ImGuiWindowFlags.AlwaysAutoResize | ImGuiNET.ImGuiWindowFlags.NoCollapse);
+            ImGuiNET.ImGui.SetNextWindowPos(new Vector2(10, 10), ImGuiNET.ImGuiCond.FirstUseEver);
+            ImGuiNET.ImGui.SetNextWindowSize(new Vector2(800, 520), ImGuiNET.ImGuiCond.FirstUseEver);
+            ImGuiNET.ImGui.Begin("Lighting");
             ImGuiNET.ImGui.SliderFloat("Shininess", ref shininess, 5, 100);
+            ImGuiNET.ImGui.Separator();
+            ImGuiNET.ImGui.Text("Shading Model:");
+            ImGuiNET.ImGui.RadioButton("Phong", ref shadingMode, 0);
+            ImGuiNET.ImGui.RadioButton("Gouraud", ref shadingMode, 1);
             ImGuiNET.ImGui.End();
 
             imGuiController.Render();
